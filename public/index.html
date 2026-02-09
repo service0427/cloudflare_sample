@@ -83,13 +83,37 @@
                 gallery.innerHTML = data.images.map(img => `
                     <div class="image-card">
                         <img src="${img.url}" alt="${img.filename}" onerror="this.src='https://placehold.co/150?text=Error'">
-                        <div class="meta">${img.filename}</div>
+                        <div class="meta" style="font-weight:bold;">${img.filename}</div>
                         <div class="meta">${(img.size / 1024).toFixed(1)} KB</div>
+                        <div class="meta" style="color:#888;">${img.description || 'No description'}</div>
+                        <div class="meta" style="color:blue;">${img.tags || ''}</div>
+                        <div style="margin-top:5px;">
+                            <button onclick="updateImage(${img.id}, prompt('Description:', '${img.description || ''}'), prompt('Tags:', '${img.tags || ''}'))">Edit</button>
+                            <button onclick="deleteImage(${img.id})" style="color:red;">Delete</button>
+                        </div>
                     </div>
                 `).join('');
             } catch (e) {
                 console.error("Failed to load images", e);
             }
+        }
+
+        async function updateImage(id, description, tags) {
+            if (description === null && tags === null) return; // Cancelled
+
+            await fetch(`${API_BASE}/images/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ description, tags })
+            });
+            loadImages();
+        }
+
+        async function deleteImage(id) {
+            if (!confirm("Are you sure?")) return;
+
+            await fetch(`${API_BASE}/images/${id}`, { method: 'DELETE' });
+            loadImages();
         }
 
         async function uploadImage() {

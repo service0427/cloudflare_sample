@@ -5,6 +5,10 @@
 ## 1. 프로젝트 구조
 *   `functions/[[path]].ts`: 백엔드 로직 (API). 이미지 업로드 및 조회 처리.
 *   `public/index.html`: 프론트엔드 테스트 페이지.
+*   `/api/upload`: 이미지를 R2에 저장하고 메타데이터를 D1에 기록합니다.
+*   `/api/images`: 저장된 이미지 목록을 반환합니다.
+*   `/api/images/:id` (PUT): 이미지 설명(description)과 태그(tags)를 수정합니다.
+*   `/api/images/:id` (DELETE): 이미지를 R2와 D1에서 삭제합니다.
 *   `wrangler.toml`: Cloudflare 리소스 바인딩 설정.
 *   `schema.sql`: D1 데이터베이스 테이블 생성 쿼리.
 

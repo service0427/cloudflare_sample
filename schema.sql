@@ -5,5 +5,7 @@ CREATE TABLE IF NOT EXISTS images (
     filename TEXT,
     content_type TEXT,
     size INTEGER,
+    description TEXT,
+    tags TEXT,
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

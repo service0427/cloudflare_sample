@@ -84,6 +84,44 @@ app.post('/api/upload', async (c) => {
     }
 });
 
+// API: Update Image Metadata (Description, Tags)
+app.put('/api/images/:id', async (c) => {
+    try {
+        const id = c.req.param('id');
+        const body = await c.req.json();
+        const { description, tags } = body;
+
+        await c.env.DB.prepare(
+            'UPDATE images SET description = ?, tags = ? WHERE id = ?'
+        ).bind(description, tags, id).run();
+
+        return c.json({ success: true, message: "Image updated" });
+    } catch (e) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+// API: Delete Image
+app.delete('/api/images/:id', async (c) => {
+    try {
+        const id = c.req.param('id');
+
+        // 1. Get Key from DB
+        const image = await c.env.DB.prepare('SELECT key FROM images WHERE id = ?').bind(id).first();
+        if (!image) return c.json({ error: "Image not found" }, 404);
+
+        // 2. Delete from R2
+        await c.env.BUCKET.delete(image.key as string);
+
+        // 3. Delete from D1
+        await c.env.DB.prepare('DELETE FROM images WHERE id = ?').bind(id).run();
+
+        return c.json({ success: true, message: "Image deleted" });
+    } catch (e) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
 // Create schema endpoint (for dev/setup convenience)
 app.get('/api/setup', async (c) => {
     try {
