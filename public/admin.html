@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D1 Management Dashboard</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            margin: 20px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        img.thumb {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            margin-right: 5px;
+        }
+
+        .edit-btn {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .refresh-btn {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h1>D1 Database Manager (Images Table)</h1>
+        <button onclick="loadData()" class="action-btn refresh-btn">🔄 Refresh Data</button>
+    </div>
+
+    <div id="status"></div>
+
+    <table id="dataTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Preview</th>
+                <th>Filename</th>
+                <th>Size (KB)</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Tags</th>
+                <th>Uploaded At</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <!-- Rows will be populated here -->
+        </tbody>
+    </table>
+
+    <script>
+        const API_BASE = '/api';
+
+        async function loadData() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">Loading data from D1...</td></tr>';
+
+            try {
+                const res = await fetch(`${API_BASE}/images`);
+                const data = await res.json();
+
+                if (data.images.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">No records found in D1.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.images.map(row => `
+                    <tr>
+                        <td>${row.id}</td>
+                        <td><a href="${row.url}" target="_blank"><img src="${row.url}" class="thumb" onerror="this.src='https://placehold.co/50?text=Error'"></a></td>
+                        <td>${row.filename}<br><small style="color:#666;">${row.key}</small></td>
+                        <td>${(row.size / 1024).toFixed(2)}</td>
+                        <td>${row.content_type}</td>
+                        <td>${row.description || '<span style="color:#ccc;">-</span>'}</td>
+                        <td><span style="color:blue;">${row.tags || '<span style="color:#ccc;">-</span>'}</span></td>
+                        <td>${row.uploaded_at}</td>
+                        <td>
+                            <button class="action-btn edit-btn" onclick="editRow(${row.id}, '${escapeHtml(row.description)}', '${escapeHtml(row.tags)}')">Edit</button>
+                            <button class="action-btn delete-btn" onclick="deleteRow(${row.id})">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:red;">Error loading data: ${e.message}</td></tr>`;
+            }
+        }
+
+        async function editRow(id, currentDesc, currentTags) {
+            const desc = prompt("Update Description:", currentDesc === 'null' ? '' : currentDesc);
+            if (desc === null) return;
+
+            const tags = prompt("Update Tags:", currentTags === 'null' ? '' : currentTags);
+            if (tags === null) return;
+
+            // Optimistic UI update could happen here, but reloading is safer for a management tool
+            await fetch(`${API_BASE}/images/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ description: desc, tags: tags })
+            });
+            loadData();
+        }
+
+        async function deleteRow(id) {
+            if (!confirm(`Are you sure you want to delete Record ID ${id}? This cannot be undone.`)) return;
+
+            await fetch(`${API_BASE}/images/${id}`, { method: 'DELETE' });
+            loadData();
+        }
+
+        function escapeHtml(text) {
+            if (!text) return 'null';
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Initialize
+        loadData();
+    </script>
+</body>
+
+</html>
