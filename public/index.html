@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloudflare D1 + R2 Image Uploader</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .upload-section {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        .image-card {
+            border: 1px solid #eee;
+            padding: 5px;
+            border-radius: 4px;
+        }
+
+        .image-card img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+
+        .meta {
+            font-size: 0.8em;
+            color: #666;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Serverless Image Board</h1>
+    <p id="server-location" style="color: #f6821f; font-weight: bold;">Loading Edge Location...</p>
+
+    <div class="upload-section">
+        <h2>Upload Image</h2>
+        <input type="file" id="fileInput" accept="image/*">
+        <button onclick="uploadImage()">Upload</button>
+        <div id="status"></div>
+    </div>
+
+    <h2>Gallery</h2>
+    <div class="gallery" id="gallery">
+        <!-- Images will load here -->
+    </div>
+
+    <script>
+        const API_BASE = '/api'; // Relative path works on same domain
+
+        async function loadImages() {
+            try {
+                const res = await fetch(`${API_BASE}/images`);
+                const data = await res.json();
+
+                // Show Server Location (The "Wow" Factor)
+                const meta = data.meta.served_by;
+                const locationText = meta.city ? `${meta.city}, ${meta.country} (${meta.colo})` : "Cloudflare Edge";
+                document.getElementById('server-location').innerText = `⚡ Served from: ${locationText}`;
+
+                const gallery = document.getElementById('gallery');
+                gallery.innerHTML = data.images.map(img => `
+                    <div class="image-card">
+                        <img src="${img.url}" alt="${img.filename}" onerror="this.src='https://placehold.co/150?text=Error'">
+                        <div class="meta">${img.filename}</div>
+                        <div class="meta">${(img.size / 1024).toFixed(1)} KB</div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error("Failed to load images", e);
+            }
+        }
+
+        async function uploadImage() {
+            const input = document.getElementById('fileInput');
+            const file = input.files[0];
+            if (!file) return alert("Please select a file");
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const status = document.getElementById('status');
+            status.textContent = "Uploading...";
+
+            try {
+                const res = await fetch(`${API_BASE}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    status.textContent = "Upload successful!";
+                    input.value = ''; // Reset input
+                    loadImages(); // Refresh gallery
+                } else {
+                    status.textContent = "Upload failed: " + (result.error || "Unknown error");
+                }
+            } catch (e) {
+                status.textContent = "Error: " + e.message;
+            }
+        }
+
+        // Initialize
+        loadImages();
+    </script>
+</body>
+
+</html>
